@@ -7,3 +7,4 @@ mlflow.db
 mlruns/
 mlartifacts/
 data2/
+data/prepared/
