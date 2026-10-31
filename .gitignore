@@ -6,5 +6,5 @@ __pycache__/
 mlflow.db
 mlruns/
 mlartifacts/
-data2/
-data/prepared/
+data2/]*
+data/prepared/*
