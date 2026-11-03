@@ -1,0 +1,8 @@
+# Entorno de Python
+.venv/
+__pycache__/
+
+# MLflow local (cada integrante tiene el suyo)
+mlflow.db
+mlruns/
+mlartifacts/
