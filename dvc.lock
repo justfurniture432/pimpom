@@ -1,0 +1,74 @@
+schema: '2.0'
+stages:
+  prepare:
+    cmd: python src/prepare.py
+    deps:
+    - path: data/raw/student-mat.csv
+      hash: md5
+      md5: 4dc304be95c60de6ee13fb8769469dd7
+      size: 56993
+    - path: src/prepare.py
+      hash: md5
+      md5: 0381734f74bf84e42419c7c3cbe5349d
+      size: 1331
+    params:
+      params.yaml:
+        prepare:
+          target: G3
+          drop_columns:
+          - school
+          - reason
+          - guardian
+          - G1
+          - G2
+          test_size: 0.2
+          random_state: 42
+    outs:
+    - path: data/prepared
+      hash: md5
+      md5: e869084259d972e07ff55c41dbbba20f.dir
+      size: 28662
+      nfiles: 2
+  train:
+    cmd: python src/train.py
+    deps:
+    - path: data/prepared
+      hash: md5
+      md5: e869084259d972e07ff55c41dbbba20f.dir
+      size: 28662
+      nfiles: 2
+    - path: src/train.py
+      hash: md5
+      md5: 835e79891e03531b6308a22fded12f3a
+      size: 1734
+    params:
+      params.yaml:
+        train:
+          n_estimators: 80
+          max_depth: 5
+    outs:
+    - path: models/model.pkl
+      hash: md5
+      md5: 3186b382da1c8c13d7590cdb87cad6b1
+      size: 303665
+  evaluate:
+    cmd: python src/evaluate.py
+    deps:
+    - path: data/prepared
+      hash: md5
+      md5: e869084259d972e07ff55c41dbbba20f.dir
+      size: 28662
+      nfiles: 2
+    - path: models/model.pkl
+      hash: md5
+      md5: 3186b382da1c8c13d7590cdb87cad6b1
+      size: 303665
+    - path: src/evaluate.py
+      hash: md5
+      md5: 04c26db8d389efd8a064b29d1406450b
+      size: 778
+    outs:
+    - path: metrics.json
+      hash: md5
+      md5: 050404637bf15de1db23b09b819faf44
+      size: 57

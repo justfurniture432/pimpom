@@ -1,11 +1,11 @@
 prepare:
-  target: Churn                # columna que se quiere predecir
-  drop_columns: [customerID]   # identificadores o columnas que no aportan
+  target: G3                # columna que se quiere predecir
+  drop_columns: [school,reason,guardian,G1,G2]   # identificadores o columnas que no aportan
   test_size: 0.2
   random_state: 42
 
 train:
-  n_estimators: 100
+  n_estimators: 80
   max_depth: 5
 
 mlflow:
