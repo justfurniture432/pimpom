@@ -7,7 +7,4 @@ mlflow.db
 mlruns/
 mlartifacts/
 
-# Archivos de datos no cargados al repositorio
-data2/
-data/prepared/
-*.csv
+
