@@ -9,7 +9,7 @@ import pandas as pd
 import yaml
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-
+import os
 params = yaml.safe_load(open("params.yaml", encoding="utf-8"))
 target = params["prepare"]["target"]
 p = params["train"]
@@ -17,7 +17,9 @@ p = params["train"]
 train = pd.read_csv("data/prepared/train.csv")
 X, y = train.drop(columns=[target]), train[target]
 
+
 mlflow.set_experiment("random-forest-regresion")
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI", "sqlite:///mlflow.db"))
 
 with mlflow.start_run():
     mlflow.log_params({
