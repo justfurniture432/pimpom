@@ -11,8 +11,7 @@ from pydantic import BaseModel, Field
 modelo = joblib.load(Path(os.getenv("MODEL_DIR", "models")) / "model.pkl")
 app = FastAPI(title="API de predicción de nota final G3 (student-mat)")
 
-SiNo = Literal["No", "Yes"]
-SiNoSinInternet = Literal["No", "Yes", "No internet service"]
+SiNo = Literal["no", "yes"]
 
 
 class Cliente(BaseModel):
