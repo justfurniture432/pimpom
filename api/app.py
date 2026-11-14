@@ -13,8 +13,7 @@ from pydantic import BaseModel, Field
 
 LOGS = Path(os.getenv("LOGS_DIR", "logs"))
 modelo = joblib.load(Path(os.getenv("MODEL_DIR", "models")) / "model.pkl")
-#---
-app = FastAPI(title="API de predicción de nota final G3 (student-mat)")
+app = FastAPI(title="API de predicción de G3 (student-mat)")
 Instrumentator().instrument(app).expose(app)
 
 try:
@@ -36,15 +35,11 @@ def guardar_entrada(datos):
 
 
 SiNo = Literal["no", "yes"]
-SiNoSinInternet = Literal["no", "yes", "no internet service"]
 
 
 class Cliente(BaseModel):
-    """Columnas del dataset (sin customerID ni Churn). Todo tiene un valor por defecto."""
+    """Variables de entrada sin G3, school, reason, guardian, G1 ni G2."""
 
-    """Columnas del dataset sin el target (G3) ni las drop_columns
-    (school, reason, guardian, G1, G2). Todo tiene un valor por defecto."""
- 
     sex: Literal["F", "M"] = "F"
     age: int = Field(17, ge=15, le=22, description="Edad del estudiante")
     address: Literal["U", "R"] = "U"
@@ -52,7 +47,7 @@ class Cliente(BaseModel):
     Pstatus: Literal["T", "A"] = "T"
     Medu: int = Field(3, ge=0, le=4, description="Educación de la madre (0-4)")
     Fedu: int = Field(2, ge=0, le=4, description="Educación del padre (0-4)")
-    Mjob: str 
+    Mjob: str
     Fjob: str
     traveltime: int = Field(1, ge=1, le=4)
     studytime: int = Field(2, ge=1, le=4)
@@ -72,7 +67,7 @@ class Cliente(BaseModel):
     Walc: int = Field(2, ge=1, le=5)
     health: int = Field(4, ge=1, le=5)
     absences: int = Field(4, ge=0, description="Número de ausencias")
- 
+
 
 @app.get("/health")
 def health():
@@ -86,9 +81,7 @@ def predict(cliente: Cliente):
     # (drop_first) y rellena con 0 las columnas que el cliente no activa.
     X = pd.get_dummies(pd.DataFrame([cliente.model_dump()]), dtype=int)
     X = X.reindex(columns=modelo.feature_names_in_, fill_value=0)
-    #return {"prediccion": round(float(modelo.predict(X)[0]), 2)}   
+    # resultado = str(modelo.predict(X)[0])
     resultado = round(float(modelo.predict(X)[0]), 2)
     PREDICCIONES.labels(clase=resultado).inc()
-
-    return {"prediccion": resultado} 
-
+    return {"prediccion": resultado}
