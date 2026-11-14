@@ -7,12 +7,24 @@ import joblib
 import pandas as pd
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import REGISTRY, Counter
 
 modelo = joblib.load(Path(os.getenv("MODEL_DIR", "models")) / "model.pkl")
 app = FastAPI(title="API de predicción de nota final G3 (student-mat)")
 
 SiNo = Literal["no", "yes"]
 
+Instrumentator().instrument(app).expose(app)
+
+try:
+    PREDICCIONES = Counter(
+        "predicciones_total",
+        "Predicciones por clase",
+        ["clase"]
+    )
+except ValueError:
+    PREDICCIONES = REGISTRY._names_to_collectors["predicciones_total"]
 
 class Cliente(BaseModel):
     """Columnas del dataset (sin customerID ni Churn). Todo tiene un valor por defecto."""
@@ -61,3 +73,8 @@ def predict(cliente: Cliente):
     X = pd.get_dummies(pd.DataFrame([cliente.model_dump()]), dtype=int)
     X = X.reindex(columns=modelo.feature_names_in_, fill_value=0)
     return {"prediccion": round(float(modelo.predict(X)[0]), 2)}
+
+
+
+
+    
