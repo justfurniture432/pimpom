@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field
 
 LOGS = Path(os.getenv("LOGS_DIR", "logs"))
 modelo = joblib.load(Path(os.getenv("MODEL_DIR", "models")) / "model.pkl")
-app = FastAPI(title="API de predicción de Churn (Telco)")
+#---
+app = FastAPI(title="API de predicción de nota final G3 (student-mat)")
 Instrumentator().instrument(app).expose(app)
 
 try:
