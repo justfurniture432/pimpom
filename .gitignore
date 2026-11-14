@@ -10,4 +10,6 @@ mlartifacts/
 data2/
 data/prepared/
 *.csv
-*.html
+
+logs/
+reports/

@@ -2,6 +2,7 @@
 import csv
 import os
 from pathlib import Path
+from threading import Lock
 from typing import Literal
 
 import joblib
@@ -10,6 +11,9 @@ from fastapi import FastAPI
 from prometheus_client import REGISTRY, Counter
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import REGISTRY, Counter
+
 
 LOGS = Path(os.getenv("LOGS_DIR", "logs"))
 modelo = joblib.load(Path(os.getenv("MODEL_DIR", "models")) / "model.pkl")
@@ -38,13 +42,23 @@ def guardar_entrada(datos):
 SiNo = Literal["no", "yes"]
 SiNoSinInternet = Literal["no", "yes", "no internet service"]
 
+Instrumentator().instrument(app).expose(app)
+
+try:
+    PREDICCIONES = Counter(
+        "predicciones_total",
+        "Predicciones por clase",
+        ["clase"]
+    )
+except ValueError:
+    PREDICCIONES = REGISTRY._names_to_collectors["predicciones_total"]
+ENTRADAS_CSV = Path("logs") / "entradas.csv"
+ENTRADAS_LOCK = Lock()
+
 
 class Cliente(BaseModel):
-    """Columnas del dataset (sin customerID ni Churn). Todo tiene un valor por defecto."""
+    """Variables de entrada sin G3, school, reason, guardian, G1 ni G2."""
 
-    """Columnas del dataset sin el target (G3) ni las drop_columns
-    (school, reason, guardian, G1, G2). Todo tiene un valor por defecto."""
- 
     sex: Literal["F", "M"] = "F"
     age: int = Field(17, ge=15, le=22, description="Edad del estudiante")
     address: Literal["U", "R"] = "U"
@@ -52,7 +66,7 @@ class Cliente(BaseModel):
     Pstatus: Literal["T", "A"] = "T"
     Medu: int = Field(3, ge=0, le=4, description="Educación de la madre (0-4)")
     Fedu: int = Field(2, ge=0, le=4, description="Educación del padre (0-4)")
-    Mjob: str 
+    Mjob: str
     Fjob: str
     traveltime: int = Field(1, ge=1, le=4)
     studytime: int = Field(2, ge=1, le=4)
@@ -72,7 +86,28 @@ class Cliente(BaseModel):
     Walc: int = Field(2, ge=1, le=5)
     health: int = Field(4, ge=1, le=5)
     absences: int = Field(4, ge=0, description="Número de ausencias")
- 
+
+
+def guardar_entrada(datos: dict):
+    """Agrega una entrada al CSV sin borrar las filas anteriores."""
+    with ENTRADAS_LOCK:
+        ENTRADAS_CSV.parent.mkdir(parents=True, exist_ok=True)
+
+        escribir_cabecera = (
+            not ENTRADAS_CSV.exists()
+            or ENTRADAS_CSV.stat().st_size == 0
+        )
+
+        with ENTRADAS_CSV.open("a", newline="", encoding="utf-8") as archivo:
+            escritor = csv.DictWriter(
+                archivo,
+                fieldnames=list(datos.keys()),
+            )
+            if escribir_cabecera:
+                escritor.writeheader()
+
+            escritor.writerow(datos)
+
 
 @app.get("/health")
 def health():
