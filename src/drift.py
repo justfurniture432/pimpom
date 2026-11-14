@@ -1,8 +1,13 @@
-"""Compara los datos del entrenamiento con los que llegaron a la API y guarda un informe de drift.
+"""Compara los datos de entrenamiento con los recibidos por la API.
 
-Uso:  python src/drift.py   compara con logs/actual.csv
-Escribe reports/drift.html, que se abre en el navegador.
+Uso:
+    python src/drift.py
+    python src/drift.py logs/actual.csv
+
+Genera:
+    reports/drift.html
 """
+
 import sys
 from pathlib import Path
 
@@ -11,33 +16,52 @@ import yaml
 from evidently import Report
 from evidently.presets import DataDriftPreset
 
-ACTUAL = sys.argv[1] if len(sys.argv) > 1 else "logs/actual.csv"
 
-params = yaml.safe_load(open("params.yaml", encoding="utf-8"))["prepare"]
-referencia = pd.read_csv("data/raw/student-mat.csv", sep=";").drop(columns=[params["target"], *params["drop_columns"]])
+ACTUAL = Path(sys.argv[1] if len(sys.argv) > 1 else "logs/actual.csv")
+
+# Ajusta esta ruta al archivo usado para entrenar tu modelo.
+REFERENCIA = Path("data/raw/student-mat.csv")
+
+if not REFERENCIA.is_file():
+    raise SystemExit(f"No se encontró el dataset de referencia: {REFERENCIA}")
+
+if not ACTUAL.is_file():
+    raise SystemExit(
+        f"No se encontró {ACTUAL}. Ejecuta primero simular_drift.py."
+    )
+
+with open("params.yaml", encoding="utf-8") as archivo:
+    params = yaml.safe_load(archivo)["prepare"]
+
+# El dataset original de estudiantes usa punto y coma como separador.
+referencia = pd.read_csv(REFERENCIA, sep=None, engine="python")
+referencia = referencia.drop(
+    columns=[params["target"], *params["drop_columns"]],
+    errors="ignore",
+)
+
 actual = pd.read_csv(ACTUAL)
 
-# Solo se comparan las columnas que están en los dos archivos, en el mismo orden.
-columnas = [c for c in referencia.columns if c in actual.columns]
-referencia, actual = referencia[columnas], actual[columnas]
+columnas = [columna for columna in referencia.columns if columna in actual.columns]
 
-informe = Report([DataDriftPreset()]).run(reference_data=referencia, current_data=actual)
-Path("reports").mkdir(exist_ok=True)
+if not columnas:
+    raise SystemExit(
+        "No hay columnas comunes entre el dataset de referencia y los datos actuales."
+    )
+
+if referencia.empty or actual.empty:
+    raise SystemExit("Los dos archivos deben contener filas de datos.")
+
+referencia = referencia[columnas]
+actual = actual[columnas]
+
+informe = Report([DataDriftPreset()]).run(
+    reference_data=referencia,
+    current_data=actual,
+)
+
+Path("reports").mkdir(parents=True, exist_ok=True)
 informe.save_html("reports/drift.html")
 
-cambiaron = []
-for metrica in informe.dict()["metrics"]:
-    nombre, valor = metrica["metric_name"], metrica["value"]
-    if nombre.startswith("DriftedColumnsCount"):
-        parte = valor["share"]
-    elif nombre.startswith("ValueDrift"):
-        columna = metrica["config"]["column"]
-        umbral = float(nombre.split("threshold=")[1].rstrip(")"))
-        # Con p-valor, hay cambio si es menor que el umbral; con distancias, si es mayor o igual.
-        hay_cambio = valor < umbral if "p_value" in nombre else valor >= umbral
-        if hay_cambio:
-            cambiaron.append(columna)
-
-print(f"Columnas con drift: {len(cambiaron)} de {len(columnas)} ({parte:.0%}): {', '.join(cambiaron) or 'ninguna'}")
-print("Hay drift en el conjunto." if parte >= 0.5 else "El conjunto no tiene drift: cambiaron menos de la mitad de las columnas.")
-print("Informe: reports/drift.html")
+print(f"Columnas comparadas: {len(columnas)}")
+print("Informe generado: reports/drift.html")
