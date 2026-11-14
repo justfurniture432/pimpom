@@ -1,6 +1,8 @@
 name: Reentreno
 
 on:
+  push:
+    branches: [feat/reentrenoBL]
   schedule:
     - cron: "0 6 * * 1"
   workflow_dispatch:
