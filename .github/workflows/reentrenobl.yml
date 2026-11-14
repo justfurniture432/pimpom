@@ -12,7 +12,7 @@ permissions:
   pull-requests: write
 
 jobs:
-  reentrenar:
+  reentrenarbl:
     runs-on: ubuntu-latest
 
     env:
@@ -41,7 +41,7 @@ jobs:
           dvc remote modify dagshub --local password "$DAGSHUB_TOKEN"
           dvc pull
 
-      - name: Reentrenar
+      - name: Reentrenarbl
         run: |
           cp metrics.json metrics_antes.json
           dvc repro
@@ -81,7 +81,7 @@ jobs:
         if: steps.comparar.outputs.mejora == 'true'
         uses: peter-evans/create-pull-request@v7
         with:
-          branch: reentreno/automatico
+          branch: reentrenobl/automatico
           base: master
           add-paths: |
             dvc.lock
