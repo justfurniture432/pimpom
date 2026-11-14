@@ -2,7 +2,6 @@
 import csv
 import os
 from pathlib import Path
-from threading import Lock
 from typing import Literal
 
 import joblib
@@ -11,14 +10,10 @@ from fastapi import FastAPI
 from prometheus_client import REGISTRY, Counter
 from prometheus_fastapi_instrumentator import Instrumentator
 from pydantic import BaseModel, Field
-from prometheus_fastapi_instrumentator import Instrumentator
-from prometheus_client import REGISTRY, Counter
-
 
 LOGS = Path(os.getenv("LOGS_DIR", "logs"))
 modelo = joblib.load(Path(os.getenv("MODEL_DIR", "models")) / "model.pkl")
-#---
-app = FastAPI(title="API de predicción de nota final G3 (student-mat)")
+app = FastAPI(title="API de predicción de G3 (student-mat)")
 Instrumentator().instrument(app).expose(app)
 
 try:
@@ -40,20 +35,6 @@ def guardar_entrada(datos):
 
 
 SiNo = Literal["no", "yes"]
-SiNoSinInternet = Literal["no", "yes", "no internet service"]
-
-Instrumentator().instrument(app).expose(app)
-
-try:
-    PREDICCIONES = Counter(
-        "predicciones_total",
-        "Predicciones por clase",
-        ["clase"]
-    )
-except ValueError:
-    PREDICCIONES = REGISTRY._names_to_collectors["predicciones_total"]
-ENTRADAS_CSV = Path("logs") / "entradas.csv"
-ENTRADAS_LOCK = Lock()
 
 
 class Cliente(BaseModel):
@@ -88,27 +69,6 @@ class Cliente(BaseModel):
     absences: int = Field(4, ge=0, description="Número de ausencias")
 
 
-def guardar_entrada(datos: dict):
-    """Agrega una entrada al CSV sin borrar las filas anteriores."""
-    with ENTRADAS_LOCK:
-        ENTRADAS_CSV.parent.mkdir(parents=True, exist_ok=True)
-
-        escribir_cabecera = (
-            not ENTRADAS_CSV.exists()
-            or ENTRADAS_CSV.stat().st_size == 0
-        )
-
-        with ENTRADAS_CSV.open("a", newline="", encoding="utf-8") as archivo:
-            escritor = csv.DictWriter(
-                archivo,
-                fieldnames=list(datos.keys()),
-            )
-            if escribir_cabecera:
-                escritor.writeheader()
-
-            escritor.writerow(datos)
-
-
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -121,9 +81,7 @@ def predict(cliente: Cliente):
     # (drop_first) y rellena con 0 las columnas que el cliente no activa.
     X = pd.get_dummies(pd.DataFrame([cliente.model_dump()]), dtype=int)
     X = X.reindex(columns=modelo.feature_names_in_, fill_value=0)
-    #return {"prediccion": round(float(modelo.predict(X)[0]), 2)}   
+    # resultado = str(modelo.predict(X)[0])
     resultado = round(float(modelo.predict(X)[0]), 2)
     PREDICCIONES.labels(clase=resultado).inc()
-
-    return {"prediccion": resultado} 
-
+    return {"prediccion": resultado}
